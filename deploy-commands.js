@@ -61,7 +61,13 @@ const commands = [
     .setDescription("Resumes the audio."),
   new SlashCommandBuilder()
     .setName("list")
-    .setDescription("Lists the next 20 songs in the queue."),
+    .setDescription("Lists the next 20 songs in the queue.")
+    .addIntegerOption((option) =>
+      option
+        .setName("page")
+        .setDescription("Page of songs to show.")
+        .setRequired(false)
+    ),
 ].map((command) => command.toJSON());
 
 const rest = new REST({ version: "9" }).setToken(token);

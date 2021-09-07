@@ -8,9 +8,7 @@ const {
   VoiceConnectionStatus,
 } = require("@discordjs/voice");
 const ytdl = require("ytdl-core");
-const got = require("got");
-const jsdom = require("jsdom");
-const { JSDOM } = jsdom;
+const puppeteer = require("puppeteer");
 
 class voicePlayer {
   //same as queue behind scenes
@@ -23,7 +21,7 @@ class voicePlayer {
       GUILD.connection = connection;
       GUILD.audioPlayer = player;
       GUILD.songQueue.push(song);
-      this.attachRecorder(GUILD, textChannel);
+      await this.attachRecorder(GUILD, textChannel);
     } else {
       GUILD.songQueue.push(song);
     }
@@ -68,32 +66,39 @@ class voicePlayer {
       GUILD.audioPlayer.unpause();
     }
   };
-  list = (GUILD, textChannel) => {
-    let list = GUILD.songQueue.slice(0, 20).map((song, index) => {
-      return `${index}. ${song}`;
+  list = (GUILD, textChannel, page = 0) => {
+    let list = "";
+    GUILD.songQueue.slice(20 * page, 20 * (page + 1)).map((song, index) => {
+      list += `${index + 1}. ${song} \n`;
     });
+    console.log(list);
     textChannel.send(list);
   };
 
-  attachRecorder(GUILD, textChannel) {
+  async attachRecorder(GUILD, textChannel) {
     let song = GUILD.songQueue.shift();
     if (!song) {
+      if (GUILD.connection == null) {
+        return;
+      }
       GUILD.connection.destroy();
       GUILD.connection = null;
       GUILD.audioPlayer = null;
       return;
     }
-    let videoTitle,
-      url = this.getTitleAndURL(song);
+    let songInfo = await this.getTitleAndURL(song);
+    let videoTitle = songInfo[0];
+    let url = songInfo[1];
+    console.log(videoTitle, url);
     const stream = ytdl(url, { filter: "audioonly", highWaterMark: 1 << 25 });
     const resource = createAudioResource(stream, {
       inputType: StreamType.Arbitrary,
     });
     textChannel.send(`Now playing ${videoTitle}`);
     GUILD.audioPlayer.play(resource);
-    GUILD.audioPlayer.on(AudioPlayerStatus.Idle, () => {
+    GUILD.audioPlayer.once(AudioPlayerStatus.Idle, async () => {
       console.log("next song");
-      this.attachRecorder(GUILD, textChannel);
+      await this.attachRecorder(GUILD, textChannel);
     });
     GUILD.audioPlayer.on("error", (err) => console.log(err));
     return entersState(GUILD.audioPlayer, AudioPlayerStatus.Playing, 10e3);
@@ -115,14 +120,29 @@ class voicePlayer {
   async getTitleAndURL(song) {
     //youtube search uses + as spaces
     song.replace(" ", "+");
-    const url = "https://www.youtube.com/results?search_query=" + song;
-    const response = await got(url);
-    const dom = new JSDOM(response.body);
-    let elements = [...dom.window.document.querySelectorAll("#video-title")];
-    console.log(elements);
-    let title = elements[0].title;
-    let link = elements[0].href;
-    return [title, link];
+
+    const browser = await puppeteer.launch({
+      headless: true,
+    });
+    const page = await browser.newPage();
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      if (request.resourceType() === "image") request.abort();
+      else request.continue();
+    });
+    await page.goto(`https://www.youtube.com/results?search_query=${song}`);
+
+    await page.waitForSelector("div#contents");
+
+    const titles = await page.evaluate(function () {
+      return Array.from(
+        document.querySelectorAll("ytd-video-renderer a#video-title")
+      ).map((el) => ({
+        title: el.getAttribute("title"),
+        link: "https://www.youtube.com" + el.getAttribute("href"),
+      }));
+    });
+    return [titles[0].title, titles[0].link];
   }
 }
 
