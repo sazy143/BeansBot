@@ -68,6 +68,9 @@ const commands = [
         .setDescription("Page of songs to show.")
         .setRequired(false)
     ),
+  new SlashCommandBuilder()
+    .setName("shuffle")
+    .setDescription("Reorder the queue"),
 ].map((command) => command.toJSON());
 
 const rest = new REST({ version: "9" }).setToken(token);
@@ -83,5 +86,4 @@ let syncCommands = async (guildID) => {
     console.error(error);
   }
 };
-
 exports.syncCommands = syncCommands;

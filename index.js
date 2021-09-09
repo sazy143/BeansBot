@@ -61,19 +61,20 @@ client.on("interactionCreate", async (interaction) => {
       }
 
       if (song.trim().length == 0) {
-        await interaction.reply("That is not a song!");
+        await interaction.editReply("That is not a song!");
       }
       if (voiceChannel) {
         try {
+          await interaction.editReply("Attempting to queue " + song);
           await voiceplayer.play(GUILD, voiceChannel, textChannel, song);
-          await interaction.editReply(`Queued ${song}`);
+          await interaction.deleteReply();
           return;
         } catch (error) {
           console.error(error);
           return;
         }
       } else {
-        await interaction.reply("Join a voice channel then try again!");
+        await interaction.editReply("Join a voice channel then try again!");
       }
     case "skip":
       voiceplayer.skip(GUILD);
@@ -117,6 +118,8 @@ client.on("interactionCreate", async (interaction) => {
       await interaction.reply("Resumed!");
       break;
     case "list":
+      await interaction.reply("Gathering List...");
+      await interaction.deleteReply();
       let page = 0;
       for (var item of interaction.options._hoistedOptions) {
         if (item.name === "page") {
@@ -125,6 +128,11 @@ client.on("interactionCreate", async (interaction) => {
         }
       }
       voiceplayer.list(GUILD, textChannel, page);
+      break;
+    case "shuffle":
+      await interaction.reply("Shuffling Queue...");
+      await interaction.deleteReply();
+      voiceplayer.shuffle(GUILD, textChannel);
       break;
   }
 });
