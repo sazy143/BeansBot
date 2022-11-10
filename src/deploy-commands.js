@@ -1,7 +1,6 @@
-const { SlashCommandBuilder } = require("@discordjs/builders");
-const { REST } = require("@discordjs/rest");
-const { Routes } = require("discord-api-types/v9");
-const { clientId, token } = require("./config.json");
+import { SlashCommandBuilder } from "@discordjs/builders";
+import { REST } from "@discordjs/rest";
+import { Routes } from "discord-api-types/v9";
 
 const commands = [
   new SlashCommandBuilder()
@@ -73,17 +72,19 @@ const commands = [
     .setDescription("Reorder the queue"),
 ].map((command) => command.toJSON());
 
-const rest = new REST({ version: "9" }).setToken(token);
+const rest = new REST({ version: "10" }).setToken(process.env.token);
 
-let syncCommands = async (guildID) => {
+export const syncCommands = async (guildID) => {
   try {
-    await rest.put(Routes.applicationGuildCommands(clientId, guildID), {
-      body: commands,
-    });
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.clientId, guildID),
+      {
+        body: commands,
+      }
+    );
 
     console.log("Successfully registered application commands.");
   } catch (error) {
     console.error(error);
   }
 };
-exports.syncCommands = syncCommands;
