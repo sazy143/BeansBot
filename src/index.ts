@@ -1,7 +1,16 @@
 import { Events, Guild, Interaction } from "discord.js";
 import { syncCommands } from "./deploy-commands";
-import { Client, Collection, GatewayIntentBits } from "discord.js";
-import { play } from "./voicesInMyHead";
+import { Client, GatewayIntentBits } from "discord.js";
+import {
+  clear,
+  list,
+  move,
+  pause,
+  play,
+  remove,
+  resume,
+  skip,
+} from "./voicesInMyHead";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -16,7 +25,7 @@ const client = new Client({
 
 client.once(Events.ClientReady, async () => {
   client.guilds.cache.map(async (guild: Guild) => {
-    //update all commands (Don't always need to run)
+    //update all commands across all servers (Don't always need to run)
     //await syncCommands(guild.id);
   });
 });
@@ -31,19 +40,6 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   switch (interaction.commandName) {
     case "ping":
       await interaction.reply("Pong!");
-      break;
-    case "server":
-      await interaction.reply(
-        `Server name: ${guild?.name}\nTotal members: ${guild?.memberCount}`
-      );
-      break;
-    case "user":
-      await interaction.reply(
-        `Your tag: ${interaction.user.tag}\nYour id: ${interaction.user.id}`
-      );
-      break;
-    case "beans":
-      await interaction.reply({ files: ["./beanImgs/Beans1.jpg"] });
       break;
     case "play":
       await interaction.deferReply();
@@ -61,67 +57,61 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
       }
 
       await interaction.editReply("Attempting to queue " + song);
-      play(guild!, song, voiceChannel);
-      return; //await interaction.deleteReply();
-    // case "skip":
-    //   voiceplayer.skip(GUILD);
-    //   interaction.reply("Song skipped!");
-    //   break;
-    // case "remove":
-    //   var index = "";
-    //   for (var item of interaction.options._hoistedOptions) {
-    //     if (item.name === "index") {
-    //       index = item.value;
-    //       break;
-    //     }
-    //   }
-    //   voiceplayer.remove(GUILD, index);
-    //   interaction.reply("Song removed!");
-    //   break;
-    // case "move":
-    //   var currentindex = "";
-    //   var newindex = "";
-    //   for (var item of interaction.options._hoistedOptions) {
-    //     if (item.name === "currentindex") {
-    //       currentindex = item.value;
-    //     }
-    //     if (item.name === "newindex") {
-    //       newindex = item.value;
-    //     }
-    //   }
-    //   voiceplayer.move(GUILD, currentindex, newindex);
-    //   await interaction.reply("Song moved!");
-    //   break;
-    // case "clear":
-    //   voiceplayer.clear(GUILD);
-    //   await interaction.reply("Queue cleared!");
-    //   break;
-    // case "pause":
-    //   voiceplayer.pause(GUILD);
-    //   await interaction.reply("Paused!");
-    //   break;
-    // case "resume":
-    //   voiceplayer.resume(GUILD);
-    //   await interaction.reply("Resumed!");
-    //   break;
-    // case "list":
-    //   await interaction.reply("Gathering List...");
-    //   await interaction.deleteReply();
-    //   let page = 0;
-    //   for (var item of interaction.options._hoistedOptions) {
-    //     if (item.name === "page") {
-    //       page = item.value;
-    //       break;
-    //     }
-    //   }
-    //   voiceplayer.list(GUILD, textChannel, page);
-    //   break;
-    // case "shuffle":
-    //   await interaction.reply("Shuffling Queue...");
-    //   await interaction.deleteReply();
-    //   voiceplayer.shuffle(GUILD, textChannel);
-    //   break;
+      play(song, voiceChannel);
+      await interaction.deleteReply();
+      return;
+    case "skip":
+      if (voiceChannel) {
+        skip(voiceChannel, interaction);
+        break;
+      }
+      interaction.reply("Not in a voice channel");
+      break;
+    case "remove":
+      var index = interaction.options.get("index")?.value;
+      if (typeof index != "number") {
+        interaction.reply("Invalid input");
+        break;
+      }
+      remove(index, voiceChannel);
+      interaction.reply("Song removed!");
+      break;
+    case "move":
+      var currentIndex = interaction.options.get("currentindex")?.value;
+      var newIndex = interaction.options.get("newindex")?.value;
+
+      if (typeof currentIndex != "number" || typeof newIndex != "number") {
+        interaction.reply("Invalid input");
+        break;
+      }
+
+      move(currentIndex, newIndex, voiceChannel);
+      await interaction.reply("Song moved!");
+      break;
+    case "clear":
+      clear(voiceChannel);
+      await interaction.reply("Queue cleared!");
+      break;
+    case "pause":
+      pause(voiceChannel, interaction);
+      break;
+    case "resume":
+      resume(voiceChannel, interaction);
+      break;
+    case "list":
+      let page = interaction.options.get("page")?.value;
+
+      if (typeof page != "number") {
+        interaction.reply("Invalid input");
+        break;
+      }
+      list(page, voiceChannel, interaction);
+      break;
   }
+});
+
+client.on(Events.Error, (error) => {
+  console.log(error);
 });
 
 client.login(process.env.token);

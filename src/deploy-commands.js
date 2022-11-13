@@ -1,20 +1,14 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const commands = [
   new SlashCommandBuilder()
     .setName("ping")
     .setDescription("Replies with pong!"),
-  new SlashCommandBuilder()
-    .setName("server")
-    .setDescription("Replies with server info!"),
-  new SlashCommandBuilder()
-    .setName("user")
-    .setDescription("Replies with user info!"),
-  new SlashCommandBuilder()
-    .setName("beans")
-    .setDescription("Sends you some beans!"),
   new SlashCommandBuilder()
     .setName("play")
     .setDescription("Plays requested song.")
@@ -64,12 +58,9 @@ const commands = [
     .addIntegerOption((option) =>
       option
         .setName("page")
-        .setDescription("Page of songs to show.")
-        .setRequired(false)
+        .setDescription("Page of songs to show. Starts at 0.")
+        .setRequired(true)
     ),
-  new SlashCommandBuilder()
-    .setName("shuffle")
-    .setDescription("Reorder the queue"),
 ].map((command) => command.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.token);
@@ -77,7 +68,7 @@ const rest = new REST({ version: "10" }).setToken(process.env.token);
 export const syncCommands = async (guildID) => {
   try {
     await rest.put(
-      Routes.applicationGuildCommands(process.env.clientId, guildID),
+      Routes.applicationGuildCommands(process.env.applicationId, guildID),
       {
         body: commands,
       }
